@@ -41,6 +41,63 @@ final class QnxControl {
         synchronized (CONTROL_LOCK) { return deployer.ensureDeployed(); }
     }
 
+    /** Separate executable name and AIS client: never restarts or signals the running ADAS. */
+    void captureCalibration(java.io.File destination, boolean forceFallback) throws Exception {
+        synchronized (CONTROL_LOCK) {
+            String id = java.util.UUID.randomUUID().toString().replace("-", "");
+            String binary = "/dev/shmem/fcwshot_" + id;
+            String remote = "/var/log/fcwshot_" + id + ".bin";
+            String log = "/dev/shmem/fcwshot_" + id + ".log";
+            try {
+                String directory = deployer.ensureDeployed();
+                String response = qnx("rc=1\nif cp " + directory + "/fcwd " + binary + " && chmod 755 " + binary + "; then\n"
+                        + binary + " snapshot=" + remote + " input=4 >" + log + " 2>&1 &\np=$!\nn=0\n"
+                        + "while kill -0 $p 2>/dev/null && [ $n -lt 15 ]; do sleep 1; n=$((n+1)); done\n"
+                        + "if kill -0 $p 2>/dev/null; then kill -KILL $p 2>/dev/null; wait $p; echo SNAP_TIMEOUT; "
+                        + "else wait $p; rc=$?; fi\nfi\nif [ $rc -eq 0 ]; then\n"
+                        + "n=$(wc -c < " + remote + ")\nh=$(openssl dgst -sha256 " + remote + ")\nh=${h##* }\n"
+                        + "echo\necho SNAP_META $n $h\n"
+                        + "else tail -n 5 " + log + "; echo SNAP_FAILED; fi", 30);
+                java.util.regex.Pattern pattern = java.util.regex.Pattern.compile("SNAP_META[ \\t]+([0-9]+)[ \\t]+([a-f0-9]{64})");
+                java.util.regex.Matcher m = null;
+                for (String line : response.split("\n")) {
+                    java.util.regex.Matcher candidate = pattern.matcher(line.trim());
+                    if (candidate.matches()) { m = candidate; break; }
+                }
+                if (m == null) {
+                    String detail = "";
+                    for (String line : response.split("\n")) if (line.trim().startsWith("[snapshot]")) detail = line.trim();
+                    throw new IOException("Не удалось получить кадр камеры" + (detail.isEmpty() ? "" : ": " + detail));
+                }
+                long size = Long.parseLong(m.group(1)); String hash = m.group(2);
+                if (size < 64 || size > CalibrationTransfer.MAX_BYTES) throw new IOException("Недопустимый размер снимка");
+                boolean copied = false;
+                if (!forceFallback) try {
+                    deployer.ensureNfs();
+                    try (AdbClient adb = createAdbClient(20000)) {
+                        String result = adb.shell("timeout 12 busybox dd if=/mnt/qnxshare/var/log/fcwshot_" + id
+                                + ".bin of=" + quote(destination.getAbsolutePath()) + " bs=65536 && echo SNAP_COPIED");
+                        copied = marker(result, "SNAP_COPIED") && destination.length() == size && hash.equals(QnxPayload.hash(destination));
+                    }
+                } catch (Exception e) { android.util.Log.w("Calibration", "NFS read failed, using telnet", e); }
+                if (!copied) {
+                    String command = "stty -echo; echo; echo SNAP_BEGIN_" + id + "; openssl base64 -in " + remote
+                            + "; echo; echo SNAP_END_" + id;
+                    String shell = "{ sleep 1; echo root; sleep 2; echo; sleep 1; printf '%s\\n' " + quote(command)
+                            + "; sleep 90; echo exit; } | timeout 105 busybox telnet 172.16.1.5 2>/dev/null";
+                    try (java.io.FileOutputStream out = new java.io.FileOutputStream(destination);
+                         AdbClient adb = createAdbClient(110000)) {
+                        CalibrationTransfer transfer = new CalibrationTransfer(id, size, hash, out);
+                        adb.shellLinesUntil(shell, transfer);
+                        transfer.requireComplete(); out.getFD().sync();
+                    }
+                }
+            } finally {
+                try { qnx("rm -f " + binary + " " + remote + " " + log, 2); } catch (Exception ignored) { }
+            }
+        }
+    }
+
     /** Fallback used when the firmware NFS client reports success but writes an empty file. */
     void upload(java.io.File source, String destination) throws Exception {
         String end = "QNX_UPLOAD_" + java.util.UUID.randomUUID().toString().replace("-", "");

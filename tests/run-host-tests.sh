@@ -16,3 +16,5 @@ src="$base/app/src/su/dsr/f515/qnx_adas"
 "$jdk/javac" --release 8 -d "$out" "$out/android/util/Base64.java" "$src/AdbClient.java" "$src/QnxPayload.java" "$src/ReleaseMetadata.java" "$base/tests/AccessTransportTest.java" "$base/tests/PayloadReleaseTest.java"
 "$jdk/java" -ea -cp "$out" su.dsr.f515.qnx_adas.PayloadReleaseTest
 "$jdk/java" -ea -cp "$out" su.dsr.f515.qnx_adas.AccessTransportTest
+"$jdk/javac" --release 8 -classpath "$out" -d "$out" "$src/CalibrationFrame.java" "$src/CalibrationTransfer.java" "$base/tests/CalibrationTest.java"
+"$jdk/java" -ea -cp "$out" su.dsr.f515.qnx_adas.CalibrationTest

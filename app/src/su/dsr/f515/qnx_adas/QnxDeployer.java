@@ -65,7 +65,7 @@ final class QnxDeployer {
         require(control.qnx(command, 2), "DIRECTORY_OK", "Не удалось подготовить каталог QNX");
     }
 
-    private void ensureNfs() throws Exception {
+    void ensureNfs() throws Exception {
         // Never copy into an unmounted directory or an unrelated export.
         try (AdbClient adb = control.createAdbClient(20000)) {
             String mounted = "awk '$1 == \"172.16.1.5:/var/log\" && $2 == \"" + NFS

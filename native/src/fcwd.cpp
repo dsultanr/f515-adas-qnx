@@ -14,6 +14,7 @@
 #include <algorithm>
 #include <vector>
 #include "capture.h"
+#include "calibration_snapshot.h"
 #include "decoder.h"
 #include "outputs.h"
 #include "preprocess.h"
@@ -28,6 +29,7 @@ volatile sig_atomic_t g_stop = 0;
 void on_signal(int) { g_stop = 1; }
 
 struct Args {
+    const char* snapshot = nullptr; // one-shot capture, before SNPE/PPS initialization
     const char* dlc = "/var/log/fcw/autospeed_heads3o_int8.dlc";
     int input = 4;
     float fps = 15;              // частота обработки; камера даёт 30
@@ -87,6 +89,7 @@ void parse_args(int argc, char** argv, Args* a) {
         else if (!strcmp(k, "verbose")) a->verbose = atoi(v);
         else if (!strcmp(k, "replay_speed")) a->replay_speed = atof(v);
         else if (!strcmp(k, "replay_speeds")) a->replay_speeds = v;
+        else if (!strcmp(k, "snapshot")) a->snapshot = v;
         else if (!strcmp(k, "vp")) a->vp = atoi(v);
         else if (!strcmp(k, "vp_sign")) a->vpc.vp_sign = atoi(v);
         else if (!strcmp(k, "bumper")) a->vpc.bumper_offset = atof(v);
@@ -156,6 +159,8 @@ int main(int argc, char** argv) {
     signal(SIGINT, on_signal);
     signal(SIGHUP, SIG_IGN);    // запуск из telnet-сессии (приложение, hu.sh): её закрытие не должно останавливать демон
     signal(SIGPIPE, SIG_IGN);   // обрыв соединения с приложением не должен ронять демон
+
+    if (a.snapshot) return calibration_snapshot(a.snapshot, a.input);
 
     ClusterWarn cw;
     if (a.pps || a.test_warn) {

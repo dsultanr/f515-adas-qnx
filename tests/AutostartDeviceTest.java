@@ -20,7 +20,12 @@ import java.util.regex.Pattern;
 
 /** Requires an idle fcwd. All temporary starts are muted and have cluster output disabled. */
 public final class AutostartDeviceTest extends Instrumentation {
-    @Override public void onCreate(Bundle args) { super.onCreate(args); start(); }
+    private boolean captureDuringRecognition;
+    @Override public void onCreate(Bundle args) {
+        super.onCreate(args);
+        captureDuringRecognition = args != null && "true".equals(args.getString("snapshot"));
+        start();
+    }
     private void status(String text) {
         Bundle b = new Bundle(); b.putString("stream", text + "\n"); sendStatus(0, b);
     }
@@ -94,6 +99,14 @@ public final class AutostartDeviceTest extends Instrumentation {
             await(() -> frames.get() >= 5, 180000, "Autostart did not deliver fcwd frames");
             int firstPid = pid(q);
             status("PASS enabled boot: fcwd pid=" + firstPid + ", frames=" + frames.get());
+
+            if (captureDuringRecognition) {
+                int beforeCapture = frames.get();
+                java.io.File archive = CalibrationArchive.capture(c, false);
+                check(pid(q) == firstPid, "Snapshot restarted running fcwd");
+                await(() -> frames.get() >= beforeCapture + 5, 10000, "Recognition did not continue during snapshot");
+                status("PASS snapshot alongside recognition: same PID, frames=" + frames.get() + ", archive=" + archive.getName());
+            }
 
             r.onReceive(c, new Intent(Intent.ACTION_BOOT_COMPLETED));
             r.onReceive(c, new Intent(Intent.ACTION_MY_PACKAGE_REPLACED));

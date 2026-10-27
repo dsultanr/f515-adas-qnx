@@ -25,6 +25,7 @@ public class MainActivity extends Activity {
     private CameraBoxesView boxes;
     private TextView status;
     private MaintenancePanel maintenance;
+    private CalibrationPanel calibration;
     private Button startButton, stopButton;
     private TextView controlStatus;
     private boolean linkUp;
@@ -139,6 +140,9 @@ public class MainActivity extends Activity {
         controlStatus.setTextColor(0xFFCBD5E1); controlStatus.setTextSize(15);
         root.addView(controlStatus);
 
+        calibration = new CalibrationPanel(this, b);
+        root.addView(calibration);
+
         maintenance = new MaintenancePanel(this);
         root.addView(maintenance);
 
@@ -208,6 +212,7 @@ public class MainActivity extends Activity {
     @Override protected void onResume() {
         super.onResume();
         if (maintenance != null) maintenance.refresh();
+        if (calibration != null) calibration.refresh();
         IntentFilter fl = new IntentFilter(FcwdLinkService.ACTION_FRAME);
         fl.addAction(FcwdLinkService.ACTION_LINK);
         registerReceiver(receiver, fl);
@@ -216,5 +221,15 @@ public class MainActivity extends Activity {
     @Override protected void onPause() {
         super.onPause();
         try { unregisterReceiver(receiver); } catch (Exception ignored) {}
+    }
+
+    @Override protected void onSaveInstanceState(Bundle state) {
+        super.onSaveInstanceState(state);
+        if (calibration != null) calibration.saveState(state);
+    }
+
+    @Override protected void onActivityResult(int request, int result, Intent data) {
+        if (calibration != null && calibration.result(request, result, data)) return;
+        super.onActivityResult(request, result, data);
     }
 }

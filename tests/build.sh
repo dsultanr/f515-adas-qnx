@@ -9,7 +9,7 @@ rm -rf "$out"
 mkdir -p "$out/classes" "$out/dex"
 "$BT/aapt2" link --manifest "$PROJ/tests/AndroidManifest.xml" -I "$PLATFORM" --min-sdk-version 26 --target-sdk-version 29 -o "$out/base.apk"
 javac -source 8 -target 8 -nowarn -classpath "$PLATFORM:$PROJ/build/android/classes" -d "$out/classes" \
-    "$PROJ/tests/AutostartDeviceTest.java" "$PROJ/tests/MaintenanceDeviceTest.java"
+    "$PROJ/tests/AutostartDeviceTest.java" "$PROJ/tests/MaintenanceDeviceTest.java" "$PROJ/tests/CalibrationDeviceTest.java"
 mapfile -d '' classes < <(find "$out/classes" -name '*.class' -print0)
 "$BT/d8" --min-api 26 --lib "$PLATFORM" --classpath "$PROJ/build/android/classes" --output "$out/dex" "${classes[@]}"
 cp "$out/base.apk" "$out/unsigned.apk"

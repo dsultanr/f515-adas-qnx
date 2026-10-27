@@ -10,7 +10,7 @@ flags=(--target=aarch64-unknown-nto-qnx7.1.0 -nostdinc++
     -frtti -fexceptions -fPIC -O2 -std=c++17 -Wno-deprecated-declarations
     -Inative/deps/snpe/include/zdl -Inative/deps/qcarcam -Inative/src)
 objects=()
-for unit in fcwd capture preprocess snpe_runner decoder tracker outputs vp_fcw qnx_compat; do
+for unit in fcwd capture calibration_snapshot preprocess snpe_runner decoder tracker outputs vp_fcw qnx_compat; do
     obj="native/build/obj/$unit.o"
     clang++-14 "${flags[@]}" -c "native/src/$unit.cpp" -o "$obj"
     objects+=("$obj")

@@ -192,6 +192,15 @@ public class AdbClient implements Closeable {
 
     /** A dedicated connection for a long-running, newline-delimited read-only probe. */
     public void shellLines(String command, LineListener listener) throws IOException {
+        shellLinesUntil(command, line -> { listener.onLine(line); return false; });
+    }
+
+    public interface LineReader {
+        /** Return true to finish this dedicated connection after a complete verified response. */
+        boolean onLine(String line) throws IOException;
+    }
+
+    public void shellLinesUntil(String command, LineReader listener) throws IOException {
         int localId = nextLocalId++;
         send(A_OPEN, localId, 0, ("shell:" + command + '\0').getBytes("UTF-8"));
         StringBuilder pending = new StringBuilder();
@@ -203,7 +212,11 @@ public class AdbClient implements Closeable {
                 send(A_OKAY, localId, m.arg0, null);
                 int end;
                 while ((end = pending.indexOf("\n")) >= 0) {
-                    listener.onLine(pending.substring(0, end).trim());
+                    if (listener.onLine(pending.substring(0, end).trim())) {
+                        send(A_CLSE, localId, m.arg0, null);
+                        close();
+                        return;
+                    }
                     pending.delete(0, end + 1);
                 }
                 if (pending.length() > 4096) throw new IOException("Probe line too long");

@@ -76,6 +76,16 @@ public final class AccessTransportTest {
             send(s.getOutputStream(),WRTE,7,p[1],"\nDONE\n".getBytes(StandardCharsets.UTF_8),false);
             receive(s.getInputStream());check(receive(s.getInputStream())[0]==CLSE);
         },a->{String tail=a.shellUntil("upload", "DONE");check(tail.length()<65536);check(tail.endsWith("\nDONE\n"));});
+        scenario(1500,s->{
+            int[] p=receive(s.getInputStream()); send(s.getOutputStream(),OKAY,7,p[1],new byte[0],false);
+            send(s.getOutputStream(),WRTE,7,p[1],"header\nBE".getBytes(StandardCharsets.UTF_8),false);receive(s.getInputStream());
+            send(s.getOutputStream(),WRTE,7,p[1],"GIN\r\npayload\r\nEND\nignored".getBytes(StandardCharsets.UTF_8),false);
+            check(receive(s.getInputStream())[0]==OKAY);check(receive(s.getInputStream())[0]==CLSE);
+        },a->{
+            java.util.List<String> lines=new java.util.ArrayList<>();
+            a.shellLinesUntil("stream",line->{lines.add(line);return line.equals("END");});
+            check(lines.equals(java.util.Arrays.asList("header","BEGIN","payload","END")));
+        });
         System.out.println("PASS local access transport: "+checks+" checks; synthetic loopback peer only");
     }
 }
