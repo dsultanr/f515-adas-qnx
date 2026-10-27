@@ -1,0 +1,6 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="su.dsr.f515.qnx_adas.autostarttest" android:versionCode="1" android:versionName="1.0">
+    <uses-sdk android:minSdkVersion="26" android:targetSdkVersion="29" />
+    <application android:label="QNX ADAS autostart test" android:allowBackup="false" />
+    <instrumentation android:name="su.dsr.f515.qnx_adas.AutostartDeviceTest" android:targetPackage="su.dsr.f515.qnx_adas" />
+    <instrumentation android:name="su.dsr.f515.qnx_adas.MaintenanceDeviceTest" android:targetPackage="su.dsr.f515.qnx_adas" />
+</manifest>

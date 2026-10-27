@@ -1,0 +1,5 @@
+{"activation_encodings": {
+  "conv2d_56": [{"bitwidth": 8, "min": -8.0, "max": 8.0}],
+  "conv2d_64": [{"bitwidth": 8, "min": -8.0, "max": 8.0}],
+  "conv2d_72": [{"bitwidth": 8, "min": -8.0, "max": 8.0}]},
+ "param_encodings": {}}
